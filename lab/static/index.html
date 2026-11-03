@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MicroGenome Lab</title>
+<style>
+  :root { --bg:#070b14; --panel:#0e1524; --line:#1d2a44; --fg:#d7e3f4; --dim:#8296b1; --acc:#6cb6ff; --ok:#58d68d; --warn:#f4d03f; --bad:#ec7063; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif; }
+  .app { display:grid; grid-template-columns:200px 1fr; height:100%; }
+  nav { background:var(--panel); border-right:1px solid var(--line); padding:14px 10px; display:flex; flex-direction:column; gap:4px; overflow:auto; }
+  nav h1 { margin:2px 8px 12px; font-size:13px; letter-spacing:.16em; text-transform:uppercase; color:var(--acc); }
+  nav button { background:none; border:0; color:var(--dim); text-align:left; padding:9px 10px; border-radius:8px; cursor:pointer; font:inherit; }
+  nav button:hover { background:#14203a; color:var(--fg); }
+  nav button.on { background:#16264a; color:var(--fg); box-shadow:inset 3px 0 0 var(--acc); }
+  nav .foot { margin-top:auto; color:var(--dim); font-size:11px; padding:8px; }
+  main { overflow:auto; padding:18px 22px 40px; }
+  h2 { margin:0 0 4px; font-size:18px; } p.lead { margin:0 0 14px; color:var(--dim); max-width:900px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin:10px 0; }
+  label { display:flex; flex-direction:column; gap:4px; color:var(--dim); font-size:12px; }
+  input,select,textarea { background:#0a1120; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:8px 10px; font:inherit; }
+  textarea { width:100%; min-height:130px; font:12px/1.4 ui-monospace,Consolas,monospace; resize:vertical; }
+  input[type=range] { padding:0; accent-color:var(--acc); }
+  button.go { background:var(--acc); color:#06101f; border:0; border-radius:8px; padding:9px 16px; font-weight:600; cursor:pointer; }
+  button.go:disabled { opacity:.5; cursor:wait; } button.ghost { background:#14203a; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:7px 12px; cursor:pointer; }
+  .stage { margin-top:12px; background:#050810; border:1px solid var(--line); border-radius:12px; min-height:120px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .stage img,.stage video { max-width:100%; display:block; }
+  .note { color:var(--dim); font-size:12px; margin-top:8px; max-width:960px; }
+  .busy { color:var(--acc); padding:30px; }
+  table { border-collapse:collapse; width:100%; margin-top:10px; } th,td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--dim); font-weight:500; font-size:12px; }
+  .bar { height:8px; background:#14203a; border-radius:4px; overflow:hidden; min-width:90px; } .bar i { display:block; height:100%; background:var(--ok); }
+  .tag { display:inline-block; padding:1px 7px; border-radius:10px; font-size:11px; background:#14203a; color:var(--dim); } .tag.virus { color:var(--bad); } .tag.s { color:var(--ok); }
+  .lin { color:var(--dim); font-size:11px; } pre { background:#0a1120; border:1px solid var(--line); border-radius:8px; padding:10px; overflow:auto; font:12px/1.4 ui-monospace,Consolas,monospace; white-space:pre-wrap; word-break:break-all; }
+  .verdict { padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#0a1120; margin-top:10px; }
+  .cols { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:14px; }
+  .err { color:var(--bad); } .hide { display:none; }
+  @media (max-width:780px){ .app{grid-template-columns:1fr; grid-template-rows:auto 1fr;} nav{flex-direction:row; flex-wrap:wrap; border-right:0; border-bottom:1px solid var(--line);} nav .foot,nav h1{display:none;} }
+</style>
+</head>
+<body>
+<div class="app">
+<nav id="nav">
+  <h1>MicroGenome Lab</h1>
+  <button data-t="identify" class="on">Identify a sequence</button>
+  <button data-t="dna">DNA helix</button>
+  <button data-t="protein">Proteins</button>
+  <button data-t="cell">Bacterium</button>
+  <button data-t="genome">Genome map</button>
+  <button data-t="evolution">Evolution (trees)</button>
+  <button data-t="assembly">Assembly</button>
+  <button data-t="medicine">Medicine search</button>
+  <button data-t="align">Align two sequences</button>
+  <button data-t="tools">Sequence tools</button>
+  <div class="foot" id="foot">loading...</div>
+</nav>
+<main>
+
+<section id="t-identify">
+  <h2>Identify a sequence</h2>
+  <p class="lead">Paste DNA or RNA (FASTA is fine). Your GPU compares it with every indexed RefSeq viral genome and 16S rRNA sequence and ranks the closest ones, with their taxonomic lineage.</p>
+  <textarea id="idseq" placeholder="Paste a sequence of at least 60 bases..."></textarea>
+  <div class="row"><button class="go" id="idgo">Identify</button>
+    <button class="ghost" data-ex="ecoli16s">Example: E. coli 16S (3% mutated)</button><button class="ghost" data-ex="sars">Example: SARS-CoV-2 piece</button>
+    <button class="ghost" data-ex="hbv">Example: Hepatitis B piece</button><button class="ghost" data-ex="random">Example: random DNA</button></div>
+  <div id="idout"></div>
+</section>
+
+<section id="t-dna" class="hide">
+  <h2>DNA double helix</h2>
+  <p class="lead">An idealised B-DNA helix (3.38 &Aring; rise, 34.3&deg; twist) built from a real sequence. The coordinates are computed from the sequence and your GPU draws the picture. Leave the box empty to use the real phiX174 genome, or paste your own bases.</p>
+  <div class="row">
+    <label>Start base (phiX174)<input type="number" id="dstart" value="0" min="0" max="5300"></label>
+    <label>Base pairs<input type="number" id="dlayers" value="16" min="8" max="36"></label>
+    <label>Angle<input type="range" id="daz" min="0" max="360" value="50"></label>
+    <label>Elevation<input type="range" id="del" min="-30" max="60" value="10"></label>
+    <button class="go" id="dgo">Render</button> <a class="ghost" style="text-decoration:none;padding:7px 12px;border-radius:8px;border:1px solid var(--line);color:var(--fg)" href="/viewer/viewer.html" target="_blank">Open the interactive 3D viewer</a>
+  </div>
+  <textarea id="dseq" style="min-height:60px" placeholder="optional: your own sequence (8 to 400 bases)"></textarea>
+  <div class="stage" id="dout"><span class="note">Press Render.</span></div><div class="note" id="dnote"></div>
+</section>
+
+<section id="t-protein" class="hide">
+  <h2>Proteins</h2>
+  <p class="lead">Real structures from the public Protein Data Bank, drawn on your GPU. Space-filling shows every atom (carbon coloured by chain, nitrogen blue, oxygen red, sulfur yellow); ribbon shows the backbone with helices and sheets thicker.</p>
+  <div class="row">
+    <label>Structure<select id="ppdb"></select></label>
+    <label>View<select id="pstyle"><option value="ribbon">Ribbon</option><option value="atoms">Space-filling atoms</option></select></label>
+    <label>Angle<input type="range" id="paz" min="0" max="360" value="40"></label>
+    <label>Elevation<input type="range" id="pel" min="-40" max="70" value="20"></label>
+    <button class="go" id="pi3d" style="background:#f4d03f">Interactive 3D</button><button class="go" id="pgo">Render picture</button><button class="go" id="pogo" style="background:#58d68d">Render orbit movie</button>
+  </div>
+  <div class="stage" id="pstage" style="display:block;position:relative;height:560px"><canvas id="pcanvas" style="width:100%;height:100%;display:block;cursor:grab"></canvas><div class="note" style="position:absolute;left:12px;bottom:8px;pointer-events:none" id="phint">Drag to rotate, wheel to zoom, shift+drag to move, double-click to stop or start the spin.</div></div>
+  <div class="stage" id="pout" style="display:none"></div><div class="note" id="pnote"></div>
+</section>
+
+<section id="t-evolution" class="hide">
+  <h2>Evolution: family trees</h2>
+  <p class="lead">Pick a group (any name from the taxonomy, such as Betacoronavirus, Herpesviridae, Escherichia, Enterobacteriaceae, Bacillus) and the lab builds a distance tree from the sequences' sketches. You can add your own sequence as one more leaf and see where it falls.</p>
+  <div class="row"><label>Group name<input id="etm" value="Betacoronavirus" size="22"></label><label>Type<select id="ekind"><option value="virus">viral genomes</option><option value="16S">16S rRNA</option></select></label>
+    <label>Leaves<input type="number" id="elim" value="18" min="4" max="40"></label><button class="go" id="ego">Build tree</button></div>
+  <div class="row"><button class="ghost" data-eg="Betacoronavirus|virus">Betacoronavirus</button><button class="ghost" data-eg="Alphacoronavirus|virus">Alphacoronavirus</button><button class="ghost" data-eg="Orthopoxvirus|virus">Orthopoxvirus</button><button class="ghost" data-eg="Escherichia|16S">Escherichia (16S)</button><button class="ghost" data-eg="Bacillus|16S">Bacillus (16S)</button><button class="ghost" data-eg="Enterobacteriaceae|16S">Enterobacteriaceae (16S)</button></div>
+  <textarea id="eseq" style="min-height:60px" placeholder="optional: add your own sequence (200+ bases) as a leaf"></textarea>
+  <div class="stage" id="eout" style="display:block;overflow:auto"><span class="note" style="padding:20px;display:block">Press Build tree.</span></div><div class="note" id="enote"></div>
+</section>
+
+<section id="t-assembly" class="hide">
+  <h2>Assembly: rebuild a genome from reads</h2>
+  <p class="lead">A sequencer produces millions of short reads; assembly stitches them back into the genome. Simulate reads from a real genome (with sequencing errors) and see how well it is rebuilt, or paste your own reads (FASTA or FASTQ).</p>
+  <div class="row"><label>Genome<select id="aref2"><option value="phix174">phiX174 (5.4 kb)</option><option value="hbv">Hepatitis B (3.3 kb)</option><option value="sars">SARS-CoV-2 (29.9 kb)</option><option value="lambda">Lambda phage (48.5 kb)</option></select></label>
+    <label>Coverage (x)<input type="number" id="acov" value="30" min="10" max="100"></label><label>Error rate (%)<input type="number" id="aerr" value="0.3" min="0" max="3" step="0.1"></label><button class="go" id="asim">Simulate and assemble</button></div>
+  <textarea id="areads" style="min-height:80px" placeholder="or paste reads here (FASTA or FASTQ), then press the button below"></textarea>
+  <div class="row"><button class="go" id="areal" style="background:#58d68d">Assemble my reads</button></div>
+  <div id="asmout"></div>
+</section>
+
+<section id="t-medicine" class="hide">
+  <h2>Medicine search</h2>
+  <div id="medbody"><p class="lead">Loading...</p></div>
+</section>
+
+<section id="t-cell" class="hide">
+  <h2>Bacterium (schematic)</h2>
+  <p class="lead">A cutaway of a rod-shaped bacterium about 2 &times; 0.5 &micro;m: layered envelope, folded DNA nucleoid, ribosome grains, flagella and pili, all drawn on your GPU. This is an illustration of how a cell is organised, not a measured structure.</p>
+  <div class="row"><label>Angle<input type="range" id="caz" min="0" max="360" value="60"></label><label>Elevation<input type="range" id="cel" min="5" max="70" value="28"></label><button class="go" id="cgo">Render</button></div>
+  <div class="stage" id="cout"><span class="note">Press Render.</span></div><div class="note" id="cnote"></div>
+</section>
+
+<section id="t-genome" class="hide">
+  <h2>Genome map: E. coli K-12</h2>
+  <p class="lead">The whole 4.6-million-base genome as a circle, from the real NCBI sequence. Candidate genes are found by scanning all six reading frames; GC content and skew are measured in 3,600 windows. Drawn on your GPU.</p>
+  <div class="row"><button class="go" id="ggo">Draw the map</button></div>
+  <div class="stage" id="gout"><span class="note">Press the button.</span></div><div class="note" id="gnote"></div>
+</section>
+
+<section id="t-align" class="hide">
+  <h2>Align two sequences</h2>
+  <p class="lead">Exact global alignment with affine gaps, computed exactly, on your own computer. It reports the score, the CIGAR string and every SNP, insertion and deletion. Up to 3,500 bases each.</p>
+  <div class="cols"><label>Reference<textarea id="aref" placeholder="reference sequence"></textarea></label><label>Query<textarea id="aqry" placeholder="query sequence"></textarea></label></div>
+  <div class="row"><button class="go" id="ago">Align</button><button class="ghost" id="aex">Example: one substitution and one deletion</button></div>
+  <div id="aout"></div>
+</section>
+
+<section id="t-tools" class="hide">
+  <h2>Sequence tools</h2>
+  <p class="lead">Length, base composition, GC content, reverse complement, and the longest candidate open reading frames with their protein translation.</p>
+  <textarea id="tseq" placeholder="paste a sequence"></textarea>
+  <div class="row"><button class="go" id="tgo">Analyse</button></div>
+  <div id="tout"></div>
+</section>
+
+</main></div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function post(url, body){ const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); return r.json(); }
+function busy(btn, on){ btn.disabled = on; }
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('hide', s.id !== 't-' + b.dataset.t));
+});
+fetch('/api/info').then(r => r.json()).then(d => {
+  $('foot').innerHTML = d.index.sequences.toLocaleString() + ' sequences indexed<br>' + d.index.viruses.toLocaleString() + ' viral genomes<br>' + d.index.sixteen_s.toLocaleString() + ' 16S rRNA<br>' + (d.edition ? d.edition + ' edition' : '') + (d.gpu ? ' - ' + d.gpu : '');
+  Object.entries(d.pdbs).forEach(([k, v]) => { const o = document.createElement('option'); o.value = k; o.textContent = k + ' - ' + v.split(':')[0]; $('ppdb').appendChild(o); });
+});
+document.querySelectorAll('[data-ex]').forEach(b => b.onclick = async () => { const r = await (await fetch('/api/example?name=' + b.dataset.ex)).json(); $('idseq').value = r.sequence; });
+function showMedia(box, noteEl, d){
+  if (d.error){ box.innerHTML = '<div class="err" style="padding:20px">' + esc(d.error) + '</div>'; return; }
+  box.innerHTML = d.video ? (d.video.endsWith('.gif') ? '<img src="' + d.video + '">' : '<video src="' + d.video + '" controls autoplay loop muted></video>') : '<img src="' + d.image + '">';
+  noteEl.textContent = d.note + ' (' + d.seconds + ' s)';
+}
+function runRender(btn, box, noteEl, payload){
+  busy(btn, true); box.innerHTML = '<div class="busy">Rendering on the GPU (a few seconds)...</div>';
+  post('/api/render', payload).then(d => showMedia(box, noteEl, d)).finally(() => busy(btn, false));
+}
+$('dgo').onclick = () => runRender($('dgo'), $('dout'), $('dnote'), {what:'helix', start:+$('dstart').value, layers:+$('dlayers').value, az:+$('daz').value, el:+$('del').value, sequence:$('dseq').value});
+$('pgo').onclick = () => runRender($('pgo'), $('pout'), $('pnote'), {what:'protein', pdb:$('ppdb').value, style:$('pstyle').value, az:+$('paz').value, el:+$('pel').value});
+$('pogo').onclick = () => runRender($('pogo'), $('pout'), $('pnote'), {what:'protein_orbit', pdb:$('ppdb').value, style:$('pstyle').value, el:+$('pel').value});
+$('cgo').onclick = () => runRender($('cgo'), $('cout'), $('cnote'), {what:'cell', az:+$('caz').value, el:+$('cel').value});
+$('ggo').onclick = () => runRender($('ggo'), $('gout'), $('gnote'), {what:'genome'});
+$('idgo').onclick = async () => {
+  busy($('idgo'), true); $('idout').innerHTML = '<div class="busy">Searching on the GPU...</div>';
+  const d = await post('/api/identify', {sequence:$('idseq').value}); busy($('idgo'), false);
+  if (d.error){ $('idout').innerHTML = '<div class="err">' + esc(d.error) + '</div>'; return; }
+  let h = '<div class="verdict">' + esc(d.verdict) + ' <span class="note">(' + d.bases.toLocaleString() + ' bases, sketch of ' + d.sketch_size + ' hashes, ' + d.seconds + ' s)</span></div>';
+  if (d.results.length){
+    h += '<table><tr><th>Match</th><th>Type</th><th>Containment</th><th>Lineage</th></tr>';
+    d.results.forEach(r => { h += '<tr><td><b>' + esc(r.title) + '</b><br><a style="color:var(--acc)" target="_blank" rel="noopener" href="https://www.ncbi.nlm.nih.gov/nuccore/' + encodeURIComponent(r.id) + '">' + esc(r.id) + '</a> &middot; ' + r.length.toLocaleString() + ' bases</td><td><span class="tag ' + (r.kind === 'virus' ? 'virus' : 's') + '">' + (r.kind === 'virus' ? 'virus' : '16S rRNA') + '</span></td><td><div class="bar"><i style="width:' + Math.round(r.containment * 100) + '%"></i></div>' + r.containment.toFixed(2) + '</td><td class="lin">' + esc(r.lineage.join(' > ') || 'lineage not resolved') + '</td></tr>'; });
+    h += '</table>';
+  }
+  $('idout').innerHTML = h + '<div class="note">' + esc(d.note) + '</div>';
+};
+$('aex').onclick = () => { const r = 'ACGTACGTTAGCCTAGGATCCGATAGGCTTAACGGATCCGTAAGCTAGCTAGGAT'; $('aref').value = r; $('aqry').value = r.slice(0, 20) + 'T' + r.slice(21, 33) + r.slice(36); };
+$('ago').onclick = async () => {
+  busy($('ago'), true); $('aout').innerHTML = '<div class="busy">Running the aligner...</div>';
+  const d = await post('/api/align', {ref:$('aref').value, qry:$('aqry').value}); busy($('ago'), false);
+  $('aout').innerHTML = d.error ? '<div class="err">' + esc(d.error) + '</div>' : '<pre>' + esc(d.output) + '</pre><div class="note">' + esc(d.note) + ' (' + d.seconds + ' s)</div>';
+};
+$('tgo').onclick = async () => {
+  const d = await post('/api/seqtools', {sequence:$('tseq').value});
+  if (d.error){ $('tout').innerHTML = '<div class="err">' + esc(d.error) + '</div>'; return; }
+  let h = '<div class="verdict">' + d.length.toLocaleString() + ' bases &middot; GC ' + d.gc_percent + '% &middot; A ' + d.counts.A + ' C ' + d.counts.C + ' G ' + d.counts.G + ' T ' + d.counts.T + ' N ' + d.counts.N + '</div>';
+  h += '<h3>Longest candidate ORFs (' + d.orf_total + ' found)</h3><table><tr><th>Strand</th><th>Position</th><th>Amino acids</th><th>Protein</th></tr>';
+  d.orfs.forEach(o => h += '<tr><td>' + o.strand + '</td><td>' + o.start + '..' + o.end + '</td><td>' + o.aa + '</td><td style="font:11px ui-monospace,Consolas,monospace;word-break:break-all">' + esc(o.protein.slice(0, 160)) + (o.protein.length > 160 ? '...' : '') + '</td></tr>');
+  h += '</table><h3>Reverse complement (first 600)</h3><pre>' + esc(d.reverse_complement) + '</pre><div class="note">' + esc(d.note) + '</div>';
+  $('tout').innerHTML = h;
+};
+
+// ---------- interactive protein viewer ----------
+let viewer = null;
+function b64f32(b64){ const bin = atob(b64), buf = new ArrayBuffer(bin.length), u = new Uint8Array(buf); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Float32Array(buf); }
+async function loadStructure(pdb, style, lig){
+  if (!viewer) viewer = MolViewer($('pcanvas'));
+  $('pout').style.display = 'none'; $('pstage').style.display = 'block';
+  $('phint').textContent = 'Loading ' + pdb + '...';
+  const d = await (await fetch('/api/structure?pdb=' + encodeURIComponent(pdb) + '&style=' + style + (lig ? '&lig=' + encodeURIComponent(lig) : ''))).json();
+  if (d.error){ $('phint').textContent = d.error; return; }
+  viewer.setData(b64f32(d.data), d.rmax);
+  $('phint').textContent = pdb + ' - ' + d.n.toLocaleString() + ' spheres. Drag to rotate, wheel to zoom, shift+drag to move, double-click to stop or start the spin.';
+}
+$('pi3d').onclick = () => loadStructure($('ppdb').value, $('pstyle').value);
+$('ppdb').onchange = () => { if ($('t-protein').offsetParent) loadStructure($('ppdb').value, $('pstyle').value); };
+$('pstyle').onchange = () => { if ($('t-protein').offsetParent) loadStructure($('ppdb').value, $('pstyle').value); };
+const showPic = () => { $('pstage').style.display = 'none'; $('pout').style.display = 'flex'; };
+$('pgo').addEventListener('click', showPic); $('pogo').addEventListener('click', showPic);
+document.querySelector('nav button[data-t="protein"]').addEventListener('click', () => setTimeout(() => { if (!viewer) loadStructure($('ppdb').value, $('pstyle').value); }, 50));
+
+// ---------- evolution ----------
+document.querySelectorAll('[data-eg]').forEach(b => b.onclick = () => { const [t, k] = b.dataset.eg.split('|'); $('etm').value = t; $('ekind').value = k; $('ego').click(); });
+function drawTree(tree){
+  let leaves = 0; (function c(n){ if (!n.children.length) leaves++; else n.children.forEach(c); })(tree);
+  let maxd = 0; (function d(n, x){ n.x = x; maxd = Math.max(maxd, x); n.children.forEach(ch => d(ch, x + (ch.length || 0))); })(tree, 0);
+  const rowH = 22, padL = 20, padT = 20, W = 1100, plotW = 620, H = leaves * rowH + padT * 2; let row = 0;
+  (function y(n){ if (!n.children.length){ n.y = padT + row++ * rowH; } else { n.children.forEach(y); n.y = n.children.reduce((s, c) => s + c.y, 0) / n.children.length; } })(tree);
+  const sx = v => padL + (maxd ? v / maxd * plotW : 0);
+  let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" style="background:#050810;font:12px system-ui,sans-serif">';
+  (function draw(n){
+    if (n.children.length){
+      const ys = n.children.map(c => c.y), x0 = sx(n.x);
+      svg += '<line x1="' + x0 + '" y1="' + Math.min(...ys) + '" x2="' + x0 + '" y2="' + Math.max(...ys) + '" stroke="#4a6a9a" stroke-width="1.5"/>';
+      n.children.forEach(c => { svg += '<line x1="' + x0 + '" y1="' + c.y + '" x2="' + sx(c.x) + '" y2="' + c.y + '" stroke="#6cb6ff" stroke-width="1.5"/>'; draw(c); });
+    } else {
+      const mine = n.name.indexOf('YOUR SEQUENCE') === 0;
+      svg += '<circle cx="' + sx(n.x) + '" cy="' + n.y + '" r="' + (mine ? 6 : 3.5) + '" fill="' + (mine ? '#f4d03f' : '#58d68d') + '"/><text x="' + (sx(n.x) + 10) + '" y="' + (n.y + 4) + '" fill="' + (mine ? '#f4d03f' : '#d7e3f4') + '">' + esc(n.name) + '</text>';
+    }
+  })(tree);
+  const bar = maxd / 4, bw = bar / maxd * plotW;
+  svg += '<line x1="' + padL + '" y1="' + (H - 8) + '" x2="' + (padL + bw) + '" y2="' + (H - 8) + '" stroke="#8296b1"/><text x="' + (padL + bw + 8) + '" y="' + (H - 4) + '" fill="#8296b1">' + bar.toFixed(3) + ' substitutions per site</text></svg>';
+  return svg;
+}
+$('ego').onclick = async () => {
+  busy($('ego'), true); $('eout').innerHTML = '<div class="busy">Building the tree...</div>';
+  const d = await post('/api/tree', {term:$('etm').value, kind:$('ekind').value, limit:+$('elim').value, sequence:$('eseq').value}); busy($('ego'), false);
+  if (d.error){ $('eout').innerHTML = '<div class="err" style="padding:20px">' + esc(d.error) + '</div>'; $('enote').textContent = ''; return; }
+  $('eout').innerHTML = drawTree(d.tree); $('enote').textContent = d.leaves + ' leaves. ' + d.note;
+};
+
+// ---------- assembly ----------
+function showAsm(d){
+  if (d.error){ $('asmout').innerHTML = '<div class="err">' + esc(d.error) + '</div>'; return; }
+  let h = '<div class="verdict"><b>' + esc(d.verdict) + '</b><div class="note">' + esc(d.source) + ' (' + d.seconds + ' s)</div></div>';
+  h += '<table><tr><th>Contigs</th><th>Total bases</th><th>Longest</th><th>N50</th><th>k-mers kept / seen</th></tr><tr><td>' + d.stats.contigs + '</td><td>' + d.stats.total.toLocaleString() + '</td><td>' + d.stats.longest.toLocaleString() + '</td><td>' + d.stats.n50.toLocaleString() + '</td><td>' + d.info.kept_kmers.toLocaleString() + ' / ' + d.info.distinct_kmers.toLocaleString() + '</td></tr></table>';
+  h += '<h3>Contigs (first ' + d.contigs.length + ')</h3><table><tr><th>#</th><th>Length</th><th>GC</th><th>Start</th></tr>';
+  d.contigs.forEach((c, i) => h += '<tr><td>' + (i + 1) + '</td><td>' + c.length.toLocaleString() + '</td><td>' + c.gc + '%</td><td style="font:11px ui-monospace,Consolas,monospace;word-break:break-all">' + esc(c.start) + '</td></tr>');
+  $('asmout').innerHTML = h + '</table><div class="note">' + esc(d.note) + '</div>';
+}
+$('asim').onclick = async () => { busy($('asim'), true); $('asmout').innerHTML = '<div class="busy">Simulating reads and assembling...</div>'; const d = await post('/api/assemble', {mode:'simulate', reference:$('aref2').value, coverage:+$('acov').value, error:+$('aerr').value}); busy($('asim'), false); showAsm(d); };
+// ---------- medicine search ----------
+let medViewer = null, medLoaded = false;
+async function showMed(pdb){
+  const d = await (await fetch('/api/med?pdb=' + pdb)).json();
+  if (d.error){ $('medinfo').innerHTML = '<div class="err">' + esc(d.error) + '</div>'; return; }
+  document.querySelectorAll('#medlist button').forEach(b => b.classList.toggle('on', b.dataset.pdb === pdb));
+  let h = '<h3 style="margin:6px 0">' + esc(d.name) + ' <span class="tag">' + esc(d.disease) + '</span></h3><p class="lead" style="margin:0 0 8px">' + esc(d.what) + '</p>';
+  h += '<div class="note" style="margin:0 0 8px"><b>In the picture:</b> ' + esc(d.lig_name) + ' (yellow). Pale ribbon = the protein; bright atoms = residues within 5 &Aring; of the molecule. Structure ' + d.pdb + ' from the public Protein Data Bank.</div>';
+  h += '<div class="stage" style="display:block;position:relative;height:430px"><canvas id="mcanvas" style="width:100%;height:100%;display:block;cursor:grab"></canvas></div>';
+  h += '<h3>Known medicines for this target</h3><table><tr><th>Medicine</th><th>What it is</th></tr>' + d.medicines.map(m => '<tr><td><b>' + esc(m.name) + '</b></td><td>' + esc(m.note) + '</td></tr>').join('') + '</table>';
+  h += '<h3>How the molecule is held (' + d.contacts_total + ' atom contacts within 4 &Aring;, ' + d.pocket_residues.length + ' residues in the pocket)</h3>';
+  h += '<div class="note">Pocket residues: ' + esc(d.pocket_residues.join(', ')) + '</div>';
+  h += '<table><tr><th>Molecule atom</th><th>Protein residue</th><th>Protein atom</th><th>Distance (&Aring;)</th><th></th></tr>' + d.hbonds.map(r => '<tr><td>' + esc(r.lig_atom) + '</td><td>' + esc(r.res) + ' (chain ' + esc(r.chain) + ')</td><td>' + esc(r.prot_atom) + '</td><td>' + r.dist + '</td><td><span class="tag s">possible hydrogen bond</span></td></tr>').join('') + '</table>';
+  h += '<div class="row"><button class="go" id="potbtn" style="background:#58d68d">Show measured potency (local ChEMBL snapshot)</button></div><div id="potout"></div><div class="note">' + esc(d.note) + '</div>';
+  $('medinfo').innerHTML = h;
+  medViewer = MolViewer($('mcanvas'));
+  const s = await (await fetch('/api/structure?pdb=' + pdb + '&style=pocket&lig=' + encodeURIComponent(d.lig_key))).json();
+  if (!s.error) medViewer.setData(b64f32(s.data), s.rmax);
+  $('potbtn').onclick = async () => {
+    busy($('potbtn'), true); $('potout').innerHTML = '<div class="busy">Asking ChEMBL...</div>';
+    const p = await post('/api/potency', {pdb: pdb}); busy($('potbtn'), false);
+    if (p.error){ $('potout').innerHTML = '<div class="verdict err">' + esc(p.error) + '</div>'; return; }
+    $('potout').innerHTML = '<table><tr><th>Compound</th><th>IC50 (nM)</th><th>pChEMBL</th><th>Assay</th></tr>' + p.rows.map(r => '<tr><td>' + esc(r.name || r.molecule) + '<br><span class="lin">' + esc(r.molecule) + '</span></td><td>' + esc(r.ic50_nM) + '</td><td>' + esc(r.pchembl) + '</td><td class="lin">' + esc(r.assay) + '</td></tr>').join('') + '</table><div class="note">' + esc(p.note) + '</div>';
+  };
+}
+async function initMed(){
+  if (medLoaded) return; medLoaded = true;
+  const list = await (await fetch('/api/meds')).json();
+  $('medbody').innerHTML = '<p class="lead">Real drug targets from the Protein Data Bank, each with a medicine bound in its pocket. See where the molecule sits, which protein residues hold it, and which approved medicines act on the target. This is a viewer of what is known, not a drug-discovery engine.</p><div class="row" id="medlist">' + list.map(m => '<button class="ghost" data-pdb="' + m.pdb + '">' + esc(m.name) + '<br><span class="lin">' + esc(m.disease) + '</span></button>').join('') + '</div><div id="medinfo"></div>';
+  document.querySelectorAll('#medlist button').forEach(b => b.onclick = () => showMed(b.dataset.pdb));
+  showMed(list[0].pdb);
+}
+document.querySelector('nav button[data-t="medicine"]').addEventListener('click', initMed);
+$('areal').onclick = async () => { busy($('areal'), true); $('asmout').innerHTML = '<div class="busy">Assembling...</div>'; const d = await post('/api/assemble', {mode:'reads', reads:$('areads').value}); busy($('areal'), false); showAsm(d); };
+</script>
+<script src="/viewer3d.js"></script>
+</body>
+</html>

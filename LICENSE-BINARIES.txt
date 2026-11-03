@@ -1,0 +1,34 @@
+MicroGenome Lab: licence for the ready-built programs
+=====================================================
+
+This licence applies to the executable programs in the release downloads:
+MicroGenomeLab.exe and everything in the "bin" folder (the "Programs").
+It does not apply to the Python source code in the "lab" folder of the
+repository (MIT licence, see LICENSE) or to the data pack (see
+THIRD_PARTY_NOTICES.md).
+
+You may:
+  1. Use the Programs free of charge, for any lawful purpose, including
+     research, teaching, and commercial work.
+  2. Copy and share the Programs with others, free of charge, as long as they
+     are distributed unchanged and together with this licence file.
+
+You may not:
+  1. Sell the Programs or charge for access to them (you may charge for your
+     own services that use them).
+  2. Modify the Programs, or decompile, disassemble or otherwise try to
+     extract the internal workings of the executable files in the "bin" folder.
+  3. Use the Programs to design, enhance or modify pathogens or other
+     organisms. The Programs are tools for analysing and visualising existing,
+     public data.
+  4. Use the output as the sole basis for medical, diagnostic, legal or
+     biosafety decisions.
+
+The Programs include components from other projects under their own licences
+(see THIRD_PARTY_NOTICES.md). Nothing in this file limits your rights under
+those licences.
+
+NO WARRANTY. The Programs are provided "as is", without warranty of any kind,
+express or implied, including fitness for a particular purpose. To the maximum
+extent permitted by law, the authors are not liable for any damages arising
+from their use.
